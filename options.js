@@ -22,6 +22,7 @@ function renderList(key, hosts) {
       li.dataset.host = host;
       const remove = document.createElement('button');
       remove.textContent = 'Remove';
+      remove.className = 'btn';
       remove.addEventListener('click', () => chrome.storage.sync.set({ [key]: hosts.filter((h) => h !== host) }));
       li.append(host, remove);
       return li;

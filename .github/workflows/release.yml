@@ -1,0 +1,45 @@
+name: Release
+
+# Push a tag like v1.2.0: the manifest gets version 1.2.0, the tests run,
+# and the packaged extension is attached to a GitHub release.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Set the version from the tag
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if ! [[ "$VERSION" =~ ^[0-9]+(\.[0-9]+){0,3}$ ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME must look like v1.2.3 (Chrome only accepts numbers and dots)"
+            exit 1
+          fi
+          jq --arg v "$VERSION" '.version = $v' manifest.json > manifest.tmp && mv manifest.tmp manifest.json
+
+      - run: npm ci
+
+      # Ubuntu 24.04 blocks the user namespaces Chrome's sandbox needs.
+      - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
+      - run: npm test
+
+      - name: Package
+        run: zip -r "tidy-tabs-$GITHUB_REF_NAME.zip" manifest.json background.js shared.js popup.html popup.js options.html options.js style.css icons -x icons/icon.svg
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" "tidy-tabs-$GITHUB_REF_NAME.zip" --title "Tidy Tabs $GITHUB_REF_NAME" --generate-notes

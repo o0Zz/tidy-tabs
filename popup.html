@@ -2,38 +2,59 @@
 <html>
 <head>
   <meta charset="utf-8">
+  <link rel="stylesheet" href="style.css">
   <style>
-    body { font: 14px system-ui, sans-serif; width: 260px; margin: 16px; }
-    h1 { font-size: 22px; margin: 0 0 16px; text-align: center; }
-    .title { display: block; font-weight: 600; margin: 16px 0 6px; }
-    label { display: block; margin: 4px 0; }
-    select, button { font: inherit; padding: 2px 6px; }
-    #suggestions { background: #eef4ff; border-radius: 6px; padding: 8px; }
-    .suggestion { display: flex; gap: 6px; align-items: center; margin: 4px 0; }
+    body { width: 300px; padding: 12px; }
+    #suggestions { background: var(--accent-soft); border-color: transparent; }
+    .suggestion { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
     .suggestion span { flex: 1; word-break: break-all; }
-    #options { display: block; margin: 20px auto 0; background: none; border: none; color: #1a56db; text-decoration: underline; cursor: pointer; }
+    footer { text-align: center; }
   </style>
 </head>
 <body>
-  <h1>Tidy Tabs</h1>
+  <h1><img src="icons/icon32.png" alt="">Tidy Tabs</h1>
 
-  <div id="suggestions" hidden></div>
+  <section class="card" id="suggestions" hidden>
+    <h2>Group suggestions</h2>
+    <div id="suggestionList"></div>
+  </section>
 
-  <label class="title" for="maxTabs">Tab limit:</label>
-  <select id="maxTabs">
-    <option>10</option><option>15</option><option>20</option><option>25</option><option>30</option>
-    <option>40</option><option>50</option><option>75</option><option>100</option>
-  </select>
+  <section class="card">
+    <header>
+      <div>
+        <h2>Tab limit</h2>
+        <p>Caps how many tabs can be open.</p>
+      </div>
+      <label class="switch" title="Tab limit on/off"><input type="checkbox" id="tabLimit"><span></span></label>
+    </header>
+    <fieldset id="tabLimitSettings">
+      <label class="row">
+        <span>Maximum tabs</span>
+        <select id="maxTabs">
+          <option>10</option><option>15</option><option>20</option><option>25</option><option>30</option>
+          <option>40</option><option>50</option><option>75</option><option>100</option>
+        </select>
+      </label>
+      <div class="field-label">When the limit is reached</div>
+      <label class="option"><input type="radio" name="whenFull" value="block"> Block new tabs</label>
+      <label class="option"><input type="radio" name="whenFull" value="least-recently-used"> Close the least recently used tab</label>
+      <label class="option"><input type="radio" name="whenFull" value="least-accessed"> Close the least accessed tab</label>
+      <label class="option"><input type="radio" name="whenFull" value="oldest"> Close the oldest tab</label>
+      <p class="warn" id="closeWarning" hidden>Closed tabs lose unsaved text without warning. Pin the tabs you are writing in: pinned, active and playing tabs are never closed.</p>
+    </fieldset>
+  </section>
 
-  <div class="title">When the tab limit is reached:</div>
-  <label><input type="radio" name="whenFull" value="least-recently-used"> Close least recently used</label>
-  <label><input type="radio" name="whenFull" value="least-accessed"> Close least accessed</label>
-  <label><input type="radio" name="whenFull" value="oldest"> Close oldest</label>
-  <label><input type="radio" name="whenFull" value="block"> Block new tabs from opening</label>
+  <section class="card">
+    <header>
+      <div>
+        <h2>Single window</h2>
+        <p>New windows open as tabs in your main window. Sign-in popups are left alone.</p>
+      </div>
+      <label class="switch" title="Single window on/off"><input type="checkbox" id="singleWindow"><span></span></label>
+    </header>
+  </section>
 
-  <label class="title"><input type="checkbox" id="singleWindow"> Single window</label>
-
-  <button id="options">More options</button>
+  <footer><button class="link" id="options">Group settings…</button></footer>
 
   <script type="module" src="popup.js"></script>
 </body>

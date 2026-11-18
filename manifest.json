@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Tidy Tabs",
-  "version": "0.3.0",
+  "version": "0.0.0",
   "description": "Keeps all tabs in one window, caps the number of tabs and suggests tab groups.",
   "permissions": ["storage", "tabs", "tabGroups"],
   "icons": {

@@ -1,45 +1,55 @@
 import { DEFAULTS, suggestions } from './shared.js';
 
-const maxTabs = document.getElementById('maxTabs');
-const singleWindow = document.getElementById('singleWindow');
+const $ = (id) => document.getElementById(id);
 const radios = document.querySelectorAll('input[name=whenFull]');
-const list = document.getElementById('suggestions');
+const save = (values) => chrome.storage.sync.set(values);
+
+function showState(s) {
+  $('tabLimitSettings').disabled = !s.tabLimit;
+  $('closeWarning').hidden = s.whenFull === 'block';
+}
 
 chrome.storage.sync.get(DEFAULTS).then((s) => {
-  maxTabs.value = String(s.maxTabs);
-  singleWindow.checked = s.singleWindow;
+  $('tabLimit').checked = s.tabLimit;
+  $('maxTabs').value = String(s.maxTabs);
+  $('singleWindow').checked = s.singleWindow;
   for (const r of radios) r.checked = r.value === s.whenFull;
+  showState(s);
 });
 
-maxTabs.addEventListener('change', () => chrome.storage.sync.set({ maxTabs: Number(maxTabs.value) }));
-singleWindow.addEventListener('change', () => chrome.storage.sync.set({ singleWindow: singleWindow.checked }));
-for (const r of radios) r.addEventListener('change', () => chrome.storage.sync.set({ whenFull: r.value }));
-document.getElementById('options').addEventListener('click', () => chrome.runtime.openOptionsPage());
+chrome.storage.onChanged.addListener(async () => showState(await chrome.storage.sync.get(DEFAULTS)));
+
+$('tabLimit').addEventListener('change', (e) => save({ tabLimit: e.target.checked }));
+$('maxTabs').addEventListener('change', (e) => save({ maxTabs: Number(e.target.value) }));
+$('singleWindow').addEventListener('change', (e) => save({ singleWindow: e.target.checked }));
+for (const r of radios) r.addEventListener('change', () => save({ whenFull: r.value }));
+$('options').addEventListener('click', () => chrome.runtime.openOptionsPage());
 
 async function addTo(key, host) {
   const s = await chrome.storage.sync.get(DEFAULTS);
-  await chrome.storage.sync.set({ [key]: [...s[key], host] });
+  await save({ [key]: [...s[key], host] });
   await renderSuggestions();
 }
 
-function button(text, onClick) {
+function button(text, className, onClick) {
   const b = document.createElement('button');
   b.textContent = text;
+  b.className = className;
   b.addEventListener('click', onClick);
   return b;
 }
 
 async function renderSuggestions() {
   const items = await suggestions();
-  list.hidden = items.length === 0;
-  list.replaceChildren(
+  $('suggestions').hidden = items.length === 0;
+  $('suggestionList').replaceChildren(
     ...items.map(({ host, count }) => {
       const row = document.createElement('div');
       row.className = 'suggestion';
       row.dataset.host = host;
       const text = document.createElement('span');
       text.textContent = `${count} tabs on ${host}`;
-      row.append(text, button('Group', () => addTo('groupSites', host)), button('Ignore', () => addTo('ignoredSites', host)));
+      row.append(text, button('Group', 'btn primary', () => addTo('groupSites', host)), button('Ignore', 'btn', () => addTo('ignoredSites', host)));
       return row;
     }),
   );

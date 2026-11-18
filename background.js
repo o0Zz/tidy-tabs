@@ -25,7 +25,7 @@ chrome.tabs.onCreated.addListener(async (tab) => {
   if (!win) return; // popup, app or devtools window: leave it alone
 
   const tabs = windows.flatMap((w) => w.tabs);
-  if (tabs.length > settings.maxTabs) {
+  if (settings.tabLimit && tabs.length > settings.maxTabs) {
     // Never close the tab being looked at, a pinned tab or one playing sound.
     const candidates = tabs.filter((t) => t.id !== tab.id && !t.active && !t.pinned && !t.audible);
     const victim = await tabToClose(settings.whenFull, candidates);

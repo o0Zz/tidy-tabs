@@ -1,4 +1,5 @@
 export const DEFAULTS = {
+  tabLimit: true,
   maxTabs: 20,
   whenFull: 'block',
   singleWindow: true,

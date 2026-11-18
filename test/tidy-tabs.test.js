@@ -104,6 +104,14 @@ test('block: new tabs above the limit are blocked and existing tabs are kept', a
   assert.deepEqual(await tabIds(), existing);
 });
 
+test('with the tab limit off, tabs above the limit stay open', async () => {
+  await settings({ tabLimit: false, maxTabs: 10 });
+  for (let i = 0; i < 14; i++) await newTab();
+  await until(async () => (await tabIds()).length === 15);
+  await sleep(500);
+  assert.equal((await tabIds()).length, 15);
+});
+
 test('least recently used: closes the tab used longest ago', async () => {
   // B is used after C was created, so C is the least recently used.
   const { closed, c } = await closedWhenFull('least-recently-used', async ({ a, b }) => {
@@ -132,13 +140,17 @@ test('the popup saves the settings', async () => {
   const page = await browser.newPage();
   await page.goto(`chrome-extension://${id}/popup.html`);
 
-  await page.waitForFunction(() => document.querySelector('input[value=block]').checked);
+  await page.waitForFunction(() => document.querySelector('input[value=block]').checked && document.getElementById('tabLimit').checked);
+  assert.equal(await page.$eval('#closeWarning', (el) => el.hidden), true);
+
   await page.select('#maxTabs', '40');
   await page.click('input[value=oldest]');
+  await page.waitForFunction(() => !document.getElementById('closeWarning').hidden);
   await page.click('#singleWindow');
-  await sleep(300);
+  await page.click('#tabLimit');
+  await page.waitForFunction(() => document.getElementById('tabLimitSettings').disabled);
 
-  assert.deepEqual(await run(() => chrome.storage.sync.get(null)), { maxTabs: 40, whenFull: 'oldest', singleWindow: false });
+  assert.deepEqual(await run(() => chrome.storage.sync.get(null)), { maxTabs: 40, whenFull: 'oldest', singleWindow: false, tabLimit: false });
 });
 
 // --- Group suggestions ---
