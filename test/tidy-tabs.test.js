@@ -413,7 +413,8 @@ test('the popup searches tabs by title, address and group, and switches to the c
   await searchFor('page', [report.id, invoice.id, notes.id]);
   const [, second] = await results();
   await popup.keyboard.press('ArrowDown');
-  await popup.keyboard.press('Enter');
+  // Enter switches tabs and closes the popup, so the key release can find the page gone.
+  await popup.keyboard.press('Enter').catch((e) => assert.match(e.message, /Target closed|detached|Session closed/));
   await until(() => run(async (id) => (await chrome.tabs.get(id)).active, second));
 });
 
