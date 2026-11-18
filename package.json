@@ -1,0 +1,11 @@
+{
+  "name": "tidy-tabs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "puppeteer": "^24.0.0"
+  }
+}
