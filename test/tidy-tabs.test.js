@@ -9,7 +9,8 @@ let browser;
 let worker;
 
 // A local site reachable under two host names: localhost and 127.0.0.1.
-const server = http.createServer((req, res) => res.end('<title>page</title>'));
+// Pages are titled after their path: /quarterly-report is "page /quarterly-report".
+const server = http.createServer((req, res) => res.end(`<title>page ${req.url}</title>`));
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
 after(() => server.close());
 const site = (host) => `http://${host}:${server.address().port}/`;
@@ -375,4 +376,43 @@ test('grouped sites of version 1.0.0 become groups, removed on the settings page
   await page.click('#groupRules li[data-name=localhost] button');
   await until(async () => (await rules()).groupSites === undefined);
   assert.deepEqual(await rules(), { groupRules: [{ name: 'example.com', sites: ['example.com'] }] });
+});
+
+// --- Tab search ---
+
+test('the popup searches tabs by title, address and group, and switches to the chosen tab', async () => {
+  const open = (path) => run((url) => chrome.tabs.create({ url, active: false }), `${site('localhost')}${path}`);
+  const report = await open('quarterly-report');
+  const invoice = await open('invoice');
+  const notes = await run((url) => chrome.tabs.create({ url, active: false }), `${site('127.0.0.1')}notes`);
+  await run(async (id) => chrome.tabGroups.update(await chrome.tabs.group({ tabIds: [id] }), { title: 'Billing' }), invoice.id);
+  await until(() => run(async () => (await chrome.tabs.query({ status: 'complete' })).filter((t) => t.title.startsWith('page')).length === 3));
+
+  const popup = await extensionPage('popup.html');
+  await popup.waitForFunction(() => document.activeElement?.id === 'search');
+  const results = () => popup.$$eval('#results li[data-tab]', (els) => els.map((el) => Number(el.dataset.tab)));
+  const sorted = (ids) => JSON.stringify([...ids].sort());
+  // Types the text in a cleared box and waits for the results to settle on the expected tabs.
+  const searchFor = async (text, expected) => {
+    await popup.keyboard.press('Escape');
+    await popup.type('#search', text);
+    await until(async () => sorted(await results()) === sorted(expected));
+  };
+
+  await searchFor('REPORT', [report.id]); // title, any case
+  await searchFor('127.0.0.1', [notes.id]); // address
+  await searchFor('billing', [invoice.id]); // group name
+  await searchFor('page localhost quarterly', [report.id]); // every word must match
+  assert.equal(await popup.$eval('#settings', (el) => el.hidden), true);
+  await searchFor('nothing-like-this', []);
+  await popup.waitForSelector('#results li.empty');
+
+  await popup.keyboard.press('Escape');
+  await popup.waitForFunction(() => document.getElementById('results').hidden && !document.getElementById('settings').hidden);
+
+  await searchFor('page', [report.id, invoice.id, notes.id]);
+  const [, second] = await results();
+  await popup.keyboard.press('ArrowDown');
+  await popup.keyboard.press('Enter');
+  await until(() => run(async (id) => (await chrome.tabs.get(id)).active, second));
 });

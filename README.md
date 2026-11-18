@@ -6,6 +6,7 @@ A small Chrome extension (Manifest V3) that keeps tabs under control.
 
 Settings are in the toolbar popup:
 
+- **Tab search**: the popup opens with the cursor in a search box. Type to list the tabs whose title, address or group name contain every word you typed; the list narrows as you type. Click a result, or pick it with the arrow keys and press Enter, to switch to that tab (and its window). Escape clears the search.
 - **Tab limit** (on/off switch, default on, 20 tabs) and what happens when it is reached:
   - *Close least recently used*, *Close least accessed* or *Close oldest*: an existing tab is closed to make room. The active tab, the tab you just left for the new one, pinned tabs and tabs playing sound are never closed. **Chrome does not warn about unsaved input**: pin a tab that holds a draft.
   - *Block new tabs from opening* (default): the new tab is closed and existing tabs are never touched.

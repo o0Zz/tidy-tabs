@@ -9,11 +9,24 @@
     .suggestion { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
     .suggestion span { flex: 1; word-break: break-all; }
     footer { text-align: center; }
+    #search { width: 100%; margin-bottom: 10px; padding: 6px 8px; background: var(--card); border: 1px solid var(--border); border-radius: 6px; }
+    #search:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+    #results { margin: 0; max-height: 440px; overflow-y: auto; }
+    #results li { display: block; padding: 6px 8px; border-radius: 6px; cursor: pointer; }
+    #results li.selected { background: var(--accent-soft); }
+    #results .title, #results .url { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    #results .title { font-weight: 600; }
+    #results .url { color: var(--muted); font-size: 12px; }
+    #results .group { color: var(--accent); font-weight: normal; margin-left: 6px; }
   </style>
 </head>
 <body>
   <h1><img src="icons/icon32.png" alt="">Tidy Tabs</h1>
 
+  <input type="search" id="search" placeholder="Search tabs" autocomplete="off" autofocus>
+  <ul class="card list" id="results" hidden></ul>
+
+  <div id="settings">
   <section class="card" id="suggestions" hidden>
     <h2>Group suggestions</h2>
     <div id="suggestionList"></div>
@@ -55,6 +68,7 @@
   </section>
 
   <footer><button class="link" id="options">Group settings…</button></footer>
+  </div>
 
   <script type="module" src="popup.js"></script>
 </body>

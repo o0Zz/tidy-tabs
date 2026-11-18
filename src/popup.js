@@ -67,3 +67,83 @@ async function renderSuggestions() {
 }
 
 renderSuggestions();
+
+// --- Tab search: every word typed must appear in the tab's title, address or group name ---
+
+const search = $('search');
+const tabsAndGroups = Promise.all([chrome.tabs.query({}), chrome.tabGroups.query({})]);
+let found = [];
+let selected = 0;
+
+function select(index) {
+  selected = index;
+  const items = $('results').children;
+  for (let i = 0; i < items.length; i++) items[i].classList.toggle('selected', i === selected);
+  items[selected]?.scrollIntoView({ block: 'nearest' });
+}
+
+async function switchTo(tab) {
+  await chrome.tabs.update(tab.id, { active: true });
+  await chrome.windows.update(tab.windowId, { focused: true });
+  window.close();
+}
+
+function resultItem(tab, groupName) {
+  const li = document.createElement('li');
+  li.dataset.tab = tab.id;
+  const title = document.createElement('div');
+  title.className = 'title';
+  title.textContent = tab.title || tab.url;
+  if (groupName) {
+    const group = document.createElement('span');
+    group.className = 'group';
+    group.textContent = groupName;
+    title.append(group);
+  }
+  const url = document.createElement('div');
+  url.className = 'url';
+  url.textContent = (tab.url || tab.pendingUrl || '').replace(/^https?:\/\//, '');
+  li.title = tab.url || '';
+  li.append(title, url);
+  li.addEventListener('click', () => switchTo(tab));
+  return li;
+}
+
+async function renderResults() {
+  const words = search.value.toLowerCase().split(/\s+/).filter(Boolean);
+  $('settings').hidden = words.length > 0;
+  $('results').hidden = words.length === 0;
+  const [tabs, groups] = await tabsAndGroups;
+  const groupNames = Object.fromEntries(groups.map((g) => [g.id, g.title ?? '']));
+  const inTitle = (tab) => words.every((w) => (tab.title ?? '').toLowerCase().includes(w));
+  found = tabs
+    .filter((tab) => {
+      const text = `${tab.title} ${tab.url || tab.pendingUrl} ${groupNames[tab.groupId] ?? ''}`.toLowerCase();
+      return words.length > 0 && words.every((w) => text.includes(w));
+    })
+    .sort((a, b) => inTitle(b) - inTitle(a)); // title matches first, then tab order
+  if (found.length === 0) {
+    const empty = document.createElement('li');
+    empty.className = 'empty';
+    empty.textContent = 'No tab matches.';
+    $('results').replaceChildren(empty);
+  } else {
+    $('results').replaceChildren(...found.map((tab) => resultItem(tab, groupNames[tab.groupId])));
+  }
+  select(0);
+}
+
+search.addEventListener('input', renderResults);
+search.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (found.length) select((selected + (e.key === 'ArrowDown' ? 1 : found.length - 1)) % found.length);
+  } else if (e.key === 'Enter' && found[selected]) {
+    switchTo(found[selected]);
+  } else if (e.key === 'Escape' && search.value) {
+    e.preventDefault(); // clears the search instead of closing the popup
+    search.value = '';
+    renderResults();
+  }
+});
+search.focus();
