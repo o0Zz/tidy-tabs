@@ -4,7 +4,7 @@ import http from 'node:http';
 import path from 'node:path';
 import puppeteer from 'puppeteer';
 
-const extensionPath = path.resolve(import.meta.dirname, '..');
+const extensionPath = path.resolve(import.meta.dirname, '../src');
 let browser;
 let worker;
 

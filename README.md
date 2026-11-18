@@ -21,11 +21,11 @@ Settings are in the toolbar popup:
 
 1. Open `chrome://extensions`.
 2. Enable **Developer mode**.
-3. Click **Load unpacked** and select this folder, or the unzipped `tidy-tabs-vX.Y.Z.zip` of a [release](https://github.com/o0Zz/tidy-tabs/releases).
+3. Click **Load unpacked** and select the `src` folder, or the unzipped `tidy-tabs-vX.Y.Z.zip` of a [release](https://github.com/o0Zz/tidy-tabs/releases).
 
 ## Release
 
-Push a tag: `git tag v1.2.0 && git push origin v1.2.0`. The GitHub workflow sets the manifest version from the tag (`manifest.json` stays at `0.0.0` in the repo), runs the tests and attaches `tidy-tabs-v1.2.0.zip` to a GitHub release.
+Push a tag: `git tag v1.2.0 && git push origin v1.2.0`. The GitHub workflow sets the manifest version from the tag (`src/manifest.json` stays at `0.0.0` in the repo), runs the tests and attaches `tidy-tabs-v1.2.0.zip` to a GitHub release.
 
 ## Tests
 

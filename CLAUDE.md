@@ -15,4 +15,4 @@ Chrome extension, Manifest V3, plain JavaScript. No build step, no dependencies,
 
 Every feature ships with tests that drive a real Chrome with the extension loaded (e.g. Puppeteer / Playwright) and assert actual behavior: tab count, window count, groups.
 
-Manual check: `chrome://extensions` → Load unpacked → this folder.
+Manual check: `chrome://extensions` → Load unpacked → the `src` folder.

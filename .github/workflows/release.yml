@@ -27,7 +27,7 @@ jobs:
             echo "::error::Tag $GITHUB_REF_NAME must look like v1.2.3 (Chrome only accepts numbers and dots)"
             exit 1
           fi
-          jq --arg v "$VERSION" '.version = $v' manifest.json > manifest.tmp && mv manifest.tmp manifest.json
+          jq --arg v "$VERSION" '.version = $v' src/manifest.json > manifest.tmp && mv manifest.tmp src/manifest.json
 
       - run: npm ci
 
@@ -37,7 +37,8 @@ jobs:
       - run: npm test
 
       - name: Package
-        run: zip -r "tidy-tabs-$GITHUB_REF_NAME.zip" manifest.json background.js shared.js popup.html popup.js options.html options.js style.css icons -x icons/icon.svg
+        working-directory: src
+        run: zip -r "../tidy-tabs-$GITHUB_REF_NAME.zip" . -x icons/icon.svg
 
       - name: Create the release
         env:
