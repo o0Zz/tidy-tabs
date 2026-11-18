@@ -7,17 +7,17 @@
     body { width: 300px; padding: 12px; }
     #suggestions { background: var(--accent-soft); border-color: transparent; }
     .suggestion { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
-    .suggestion span { flex: 1; word-break: break-all; }
+    .suggestion span { flex: 1; overflow-wrap: anywhere; }
     footer { text-align: center; }
     #search { width: 100%; margin-bottom: 10px; padding: 6px 8px; background: var(--card); border: 1px solid var(--border); border-radius: 6px; }
     #search:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
     #results { margin: 0; max-height: 440px; overflow-y: auto; }
     #results li { display: block; padding: 6px 8px; border-radius: 6px; cursor: pointer; }
     #results li.selected { background: var(--accent-soft); }
-    #results .title, #results .url { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-    #results .title { font-weight: 600; }
+    #results .title { display: flex; gap: 6px; font-weight: 600; }
+    #results .title span:first-child, #results .url { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
     #results .url { color: var(--muted); font-size: 12px; }
-    #results .group { color: var(--accent); font-weight: normal; margin-left: 6px; }
+    #results .group { flex: none; color: var(--accent); font-weight: normal; }
   </style>
 </head>
 <body>

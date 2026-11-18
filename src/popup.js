@@ -93,7 +93,9 @@ function resultItem(tab, groupName) {
   li.dataset.tab = tab.id;
   const title = document.createElement('div');
   title.className = 'title';
-  title.textContent = tab.title || tab.url;
+  const text = document.createElement('span'); // ellipsized, so a long title never hides the group name
+  text.textContent = tab.title || tab.url;
+  title.append(text);
   if (groupName) {
     const group = document.createElement('span');
     group.className = 'group';

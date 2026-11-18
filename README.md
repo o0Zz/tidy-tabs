@@ -18,6 +18,8 @@ Settings are in the toolbar popup:
 
 **Settings page**: the keyboard shortcut (shown there, changed on Chrome's `chrome://extensions/shortcuts` page through the *Change…* button), the suggestion threshold, the groups and the ignored sites (a site covers its subdomains), with *Add* and *Remove* buttons.
 
+Tidy Tabs collects no data and makes no network calls: see the [privacy policy](PRIVACY.md).
+
 ## Install (developer mode)
 
 1. Open `chrome://extensions`.
