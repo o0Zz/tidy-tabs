@@ -17,10 +17,10 @@ export function hostOf(tab) {
   }
 }
 
-// Sites with at least `groupThreshold` ungrouped tabs that are neither a rule nor ignored.
+// Sites with at least `groupThreshold` ungrouped, unpinned tabs that are neither a rule nor ignored.
 export async function suggestions() {
   const s = await chrome.storage.sync.get(DEFAULTS);
-  const tabs = await chrome.tabs.query({ windowType: 'normal', groupId: chrome.tabGroups.TAB_GROUP_ID_NONE });
+  const tabs = await chrome.tabs.query({ windowType: 'normal', pinned: false, groupId: chrome.tabGroups.TAB_GROUP_ID_NONE });
   const counts = {};
   for (const host of tabs.map(hostOf)) if (host) counts[host] = (counts[host] ?? 0) + 1;
   return Object.entries(counts)

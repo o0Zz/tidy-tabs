@@ -135,6 +135,46 @@ test('oldest: closes the oldest tab, never the active or a pinned one', async ()
   assert.equal(closed, c);
 });
 
+test('a new foreground tab never closes the tab it was opened over', async () => {
+  // A is active (e.g. holds a draft) and the oldest; opening D in front makes A inactive.
+  await settings({ maxTabs: 3, whenFull: 'oldest' });
+  const a = await firstTab();
+  const b = await newTab();
+  await newTab();
+  await run(() => chrome.tabs.create({ url: 'about:blank', active: true }));
+  await sleep(500);
+  const remaining = await tabIds();
+  assert.equal(remaining.length, 3);
+  assert.ok(remaining.includes(a));
+  assert.ok(!remaining.includes(b));
+});
+
+test('tabs opened together still respect the limit', async () => {
+  await settings({ maxTabs: 3, whenFull: 'least-recently-used' });
+  await newTab();
+  await newTab();
+  await run(() => Promise.all(Array.from({ length: 6 }, () => chrome.tabs.create({ url: 'about:blank', active: false }))));
+  await until(async () => (await tabIds()).length === 3);
+  await sleep(500);
+  assert.equal((await tabIds()).length, 3);
+});
+
+test('a sign-in popup opens and shows even at the tab limit', async () => {
+  await settings({ maxTabs: 3 });
+  const page = (await browser.pages())[0];
+  await page.goto(site('localhost'));
+  await newTab();
+  await newTab();
+  await page.evaluate((url) => window.open(url, 'login', 'width=500,height=600'), `${site('127.0.0.1')}login`);
+  await sleep(1000);
+
+  const ws = await run(async () => (await chrome.windows.getAll({ populate: true })).map((w) => ({ type: w.type, state: w.state, focused: w.focused, tabs: w.tabs.length })));
+  assert.deepEqual(ws.find((w) => w.type === 'popup'), { type: 'popup', state: 'normal', focused: true, tabs: 1 });
+  assert.equal(ws.find((w) => w.type === 'normal').tabs, 3);
+  const popup = await (await browser.waitForTarget((t) => t.url().endsWith('/login'))).page();
+  assert.equal(await popup.evaluate(() => document.visibilityState), 'visible');
+});
+
 test('the popup saves the settings', async () => {
   const id = new URL(worker.url()).host;
   const page = await browser.newPage();
@@ -223,6 +263,60 @@ test('ignoring a suggestion hides it for good without grouping', async () => {
   assert.equal(await badge(), '');
   assert.deepEqual(await groups(), []);
   assert.deepEqual((await run(() => chrome.storage.sync.get('ignoredSites'))).ignoredSites, ['localhost']);
+});
+
+test('pinned tabs do not count towards a suggestion', async () => {
+  const pinned = await openSite('localhost', 3);
+  await run((ids) => Promise.all(ids.map((id) => chrome.tabs.update(id, { pinned: true }))), pinned.map((t) => t.id));
+  await openSite('localhost', 1);
+  await sleep(1000);
+  assert.equal(await badge(), '');
+});
+
+// Groups localhost through the popup's suggestion, with 4 localhost tabs open.
+async function acceptLocalhost() {
+  await until(async () => (await badge()) === '1');
+  const popup = await extensionPage('popup.html');
+  await popup.waitForSelector('.suggestion[data-host=localhost] button');
+  await (await popup.$('.suggestion[data-host=localhost] button')).click();
+  await until(async () => (await groups()).some((g) => g.title === 'localhost' && g.tabs === 4));
+}
+
+test('grouping a site leaves tabs the user grouped alone', async () => {
+  const [mine] = await openSite('localhost', 1);
+  await run(async (id) => chrome.tabGroups.update(await chrome.tabs.group({ tabIds: [id] }), { title: 'Mine' }), mine.id);
+  await openSite('localhost', 4);
+  await acceptLocalhost();
+  await sleep(500);
+  assert.deepEqual((await groups()).sort((a, b) => a.title.localeCompare(b.title)), [
+    { title: 'localhost', tabs: 4 },
+    { title: 'Mine', tabs: 1 },
+  ]);
+});
+
+test('a renamed site group still gets the new tabs of its site', async () => {
+  await openSite('localhost', 4);
+  await acceptLocalhost();
+  await run(async () => chrome.tabGroups.update((await chrome.tabGroups.query({}))[0].id, { title: 'Local' }));
+  await openSite('localhost', 1);
+  await until(async () => (await groups())[0]?.tabs === 5);
+  assert.deepEqual(await groups(), [{ title: 'Local', tabs: 5 }]);
+});
+
+test('an ungrouped tab stays out while browsing its site, and a tab leaves the group when it leaves the site', async () => {
+  const tabs = await openSite('localhost', 4);
+  await acceptLocalhost();
+  const [out, leaver] = tabs.map((t) => t.id);
+  const go = (id, url) => run((id, url) => chrome.tabs.update(id, { url }), id, url);
+  const groupOf = (id) => run(async (id) => (await chrome.tabs.get(id)).groupId, id);
+
+  await run((id) => chrome.tabs.ungroup(id), out);
+  await go(out, `${site('localhost')}other-page`);
+  await go(leaver, site('127.0.0.1'));
+  await sleep(1000);
+  assert.equal(await groupOf(out), -1);
+  assert.equal(await groupOf(leaver), -1);
+  assert.deepEqual(await groups(), [{ title: 'localhost', tabs: 2 }]);
 });
 
 test('a grouped site is removed on the settings page', async () => {

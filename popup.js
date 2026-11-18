@@ -27,7 +27,7 @@ $('options').addEventListener('click', () => chrome.runtime.openOptionsPage());
 
 async function addTo(key, host) {
   const s = await chrome.storage.sync.get(DEFAULTS);
-  await save({ [key]: [...s[key], host] });
+  if (!s[key].includes(host)) await save({ [key]: [...s[key], host] });
   await renderSuggestions();
 }
 
@@ -49,7 +49,11 @@ async function renderSuggestions() {
       row.dataset.host = host;
       const text = document.createElement('span');
       text.textContent = `${count} tabs on ${host}`;
-      row.append(text, button('Group', 'btn primary', () => addTo('groupSites', host)), button('Ignore', 'btn', () => addTo('ignoredSites', host)));
+      const choose = (key) => () => {
+        row.remove(); // a second click cannot add the site twice
+        addTo(key, host);
+      };
+      row.append(text, button('Group', 'btn primary', choose('groupSites')), button('Ignore', 'btn', choose('ignoredSites')));
       return row;
     }),
   );
