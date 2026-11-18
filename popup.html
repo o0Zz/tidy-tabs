@@ -1,0 +1,32 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font: 14px system-ui, sans-serif; width: 240px; margin: 16px; }
+    h1 { font-size: 22px; margin: 0 0 16px; text-align: center; }
+    .title { display: block; font-weight: 600; margin: 16px 0 6px; }
+    label { display: block; margin: 4px 0; }
+    select { font: inherit; padding: 2px 4px; }
+  </style>
+</head>
+<body>
+  <h1>Tidy Tabs</h1>
+
+  <label class="title" for="maxTabs">Tab limit:</label>
+  <select id="maxTabs">
+    <option>10</option><option>15</option><option>20</option><option>25</option><option>30</option>
+    <option>40</option><option>50</option><option>75</option><option>100</option>
+  </select>
+
+  <div class="title">When the tab limit is reached:</div>
+  <label><input type="radio" name="whenFull" value="least-recently-used"> Close least recently used</label>
+  <label><input type="radio" name="whenFull" value="least-accessed"> Close least accessed</label>
+  <label><input type="radio" name="whenFull" value="oldest"> Close oldest</label>
+  <label><input type="radio" name="whenFull" value="block"> Block new tabs from opening</label>
+
+  <label class="title"><input type="checkbox" id="singleWindow"> Single window</label>
+
+  <script src="popup.js"></script>
+</body>
+</html>
