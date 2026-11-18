@@ -8,7 +8,8 @@ Chrome extension, Manifest V3, plain JavaScript. No build step, no dependencies,
 - Request the minimum permissions. No host permissions unless a feature requires them.
 - Closing an existing tab can lose unsaved input (e.g. Azure DevOps comments) without warning. "Block" stays the default mode, and the close modes never pick the active, a pinned or an audible tab.
 - Window merging only applies to windows of type `normal`. Popups (OAuth / Microsoft login, Teams) must stay untouched.
-- Keep it small: one service worker and the toolbar popup for settings (`chrome.storage.sync`).
+- Keep it small: one service worker (ES module), the toolbar popup and the options page. Settings live in `chrome.storage.sync`, their defaults in `shared.js`.
+- Group suggestions only suggest: nothing is grouped until the user clicks *Group*.
 
 ## Testing
 

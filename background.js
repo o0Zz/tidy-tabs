@@ -1,4 +1,4 @@
-const DEFAULTS = { maxTabs: 20, whenFull: 'block', singleWindow: true };
+import { DEFAULTS, hostOf, suggestions } from './shared.js';
 
 // How many times each tab was activated, for the "least accessed" mode.
 chrome.tabs.onActivated.addListener(async ({ tabId }) => {
@@ -45,4 +45,50 @@ chrome.tabs.onCreated.addListener(async (tab) => {
   await chrome.tabs.move(tab.id, { windowId: main.id, index: -1 });
   await chrome.tabs.update(tab.id, { active: true });
   await chrome.windows.update(main.id, { focused: true });
+});
+
+// Runs one grouping at a time, so tabs loading together do not create two groups for a site.
+let groupQueue = Promise.resolve();
+const groupSite = (host) => (groupQueue = groupQueue.then(() => groupSiteNow(host)).catch(console.error));
+
+// Puts every unpinned tab of a site into the group named after it, one group per window.
+async function groupSiteNow(host) {
+  const tabs = (await chrome.tabs.query({ windowType: 'normal', pinned: false })).filter((t) => hostOf(t) === host);
+  const windowIds = new Set(tabs.map((t) => t.windowId));
+  for (const windowId of windowIds) {
+    const tabIds = tabs.filter((t) => t.windowId === windowId).map((t) => t.id);
+    const [group] = await chrome.tabGroups.query({ windowId, title: host });
+    if (group) {
+      await chrome.tabs.group({ groupId: group.id, tabIds });
+    } else {
+      const groupId = await chrome.tabs.group({ tabIds, createProperties: { windowId } });
+      await chrome.tabGroups.update(groupId, { title: host });
+    }
+  }
+}
+
+async function updateBadge() {
+  const n = (await suggestions()).length;
+  await chrome.action.setBadgeText({ text: n ? String(n) : '' });
+}
+
+chrome.tabs.onUpdated.addListener(async (tabId, change, tab) => {
+  if (!change.url && change.groupId === undefined) return;
+  if (change.url) {
+    const host = hostOf(tab);
+    const { groupSites } = await chrome.storage.sync.get(DEFAULTS);
+    if (host && groupSites.includes(host)) await groupSite(host);
+  }
+  await updateBadge();
+});
+
+chrome.tabs.onRemoved.addListener(updateBadge);
+
+chrome.storage.onChanged.addListener(async (changes, area) => {
+  if (area !== 'sync') return;
+  if (changes.groupSites) {
+    const before = changes.groupSites.oldValue ?? [];
+    for (const host of changes.groupSites.newValue ?? []) if (!before.includes(host)) await groupSite(host);
+  }
+  await updateBadge();
 });

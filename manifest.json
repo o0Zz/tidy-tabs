@@ -1,14 +1,16 @@
 {
   "manifest_version": 3,
   "name": "Tidy Tabs",
-  "version": "0.2.0",
-  "description": "Keeps all tabs in one window and caps the number of tabs.",
-  "permissions": ["storage"],
+  "version": "0.3.0",
+  "description": "Keeps all tabs in one window, caps the number of tabs and suggests tab groups.",
+  "permissions": ["storage", "tabs", "tabGroups"],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
   "action": {
     "default_title": "Tidy Tabs",
     "default_popup": "popup.html"
-  }
+  },
+  "options_page": "options.html"
 }

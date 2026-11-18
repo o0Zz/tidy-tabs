@@ -1,0 +1,31 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Tidy Tabs settings</title>
+  <style>
+    body { font: 14px system-ui, sans-serif; max-width: 480px; margin: 32px auto; padding: 0 16px; }
+    h2 { font-size: 16px; margin-top: 28px; }
+    input, button { font: inherit; }
+    input[type=number] { width: 60px; }
+    li { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; }
+    .empty { color: #777; }
+  </style>
+</head>
+<body>
+  <h1>Tidy Tabs</h1>
+
+  <h2>Group suggestions</h2>
+  <label>Suggest a group when a site has <input type="number" id="groupThreshold" min="2"> or more tabs.</label>
+
+  <h2>Grouped sites</h2>
+  <p>New tabs on these sites join their group automatically.</p>
+  <ul id="groupSites"></ul>
+
+  <h2>Ignored sites</h2>
+  <p>These sites are never suggested.</p>
+  <ul id="ignoredSites"></ul>
+
+  <script type="module" src="options.js"></script>
+</body>
+</html>

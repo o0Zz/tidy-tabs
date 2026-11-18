@@ -3,15 +3,21 @@
 <head>
   <meta charset="utf-8">
   <style>
-    body { font: 14px system-ui, sans-serif; width: 240px; margin: 16px; }
+    body { font: 14px system-ui, sans-serif; width: 260px; margin: 16px; }
     h1 { font-size: 22px; margin: 0 0 16px; text-align: center; }
     .title { display: block; font-weight: 600; margin: 16px 0 6px; }
     label { display: block; margin: 4px 0; }
-    select { font: inherit; padding: 2px 4px; }
+    select, button { font: inherit; padding: 2px 6px; }
+    #suggestions { background: #eef4ff; border-radius: 6px; padding: 8px; }
+    .suggestion { display: flex; gap: 6px; align-items: center; margin: 4px 0; }
+    .suggestion span { flex: 1; word-break: break-all; }
+    #options { display: block; margin: 20px auto 0; background: none; border: none; color: #1a56db; text-decoration: underline; cursor: pointer; }
   </style>
 </head>
 <body>
   <h1>Tidy Tabs</h1>
+
+  <div id="suggestions" hidden></div>
 
   <label class="title" for="maxTabs">Tab limit:</label>
   <select id="maxTabs">
@@ -27,6 +33,8 @@
 
   <label class="title"><input type="checkbox" id="singleWindow"> Single window</label>
 
-  <script src="popup.js"></script>
+  <button id="options">More options</button>
+
+  <script type="module" src="popup.js"></script>
 </body>
 </html>

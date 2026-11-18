@@ -1,11 +1,18 @@
-import { test, beforeEach, afterEach } from 'node:test';
+import { test, after, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
+import http from 'node:http';
 import path from 'node:path';
 import puppeteer from 'puppeteer';
 
 const extensionPath = path.resolve(import.meta.dirname, '..');
 let browser;
 let worker;
+
+// A local site reachable under two host names: localhost and 127.0.0.1.
+const server = http.createServer((req, res) => res.end('<title>page</title>'));
+await new Promise((r) => server.listen(0, '127.0.0.1', r));
+after(() => server.close());
+const site = (host) => `http://${host}:${server.address().port}/`;
 
 beforeEach(async () => {
   browser = await puppeteer.launch({
@@ -14,6 +21,7 @@ beforeEach(async () => {
   });
   const target = await browser.waitForTarget((t) => t.type() === 'service_worker');
   worker = await target.worker();
+  await until(() => worker.evaluate(() => Boolean(globalThis.chrome?.windows)));
 });
 
 afterEach(() => browser.close());
@@ -131,4 +139,86 @@ test('the popup saves the settings', async () => {
   await sleep(300);
 
   assert.deepEqual(await run(() => chrome.storage.sync.get(null)), { maxTabs: 40, whenFull: 'oldest', singleWindow: false });
+});
+
+// --- Group suggestions ---
+
+const openSite = (host, n) => Promise.all(Array.from({ length: n }, () => run((url) => chrome.tabs.create({ url, active: false }), site(host))));
+const badge = () => run(() => chrome.action.getBadgeText({}));
+const extensionPage = async (file) => {
+  const page = await browser.newPage();
+  await page.goto(`chrome-extension://${new URL(worker.url()).host}/${file}`);
+  return page;
+};
+const groups = () =>
+  run(async () => {
+    const tabs = await chrome.tabs.query({});
+    const gs = await chrome.tabGroups.query({});
+    return gs.map((g) => ({ title: g.title, tabs: tabs.filter((t) => t.groupId === g.id).length }));
+  });
+
+test('a group is suggested once a site reaches 4 tabs', async () => {
+  await openSite('127.0.0.1', 3);
+  await sleep(1000);
+  assert.equal(await badge(), '');
+
+  await openSite('127.0.0.1', 1);
+  await openSite('localhost', 3);
+  await until(async () => (await badge()) === '1');
+});
+
+test('the threshold is set on the settings page', async () => {
+  const page = await extensionPage('options.html');
+  await page.waitForFunction(() => document.getElementById('groupThreshold').value === '4');
+  await page.$eval('#groupThreshold', (el) => {
+    el.value = '2';
+    el.dispatchEvent(new Event('change'));
+  });
+  await until(async () => (await run(() => chrome.storage.sync.get('groupThreshold'))).groupThreshold === 2);
+
+  await openSite('localhost', 2);
+  await until(async () => (await badge()) === '1');
+});
+
+test('accepting a suggestion groups the tabs and new tabs of the site join the group', async () => {
+  await openSite('localhost', 4);
+  await until(async () => (await badge()) === '1');
+
+  const popup = await extensionPage('popup.html');
+  await popup.waitForSelector('.suggestion[data-host=localhost] button');
+  const [group] = await popup.$$('.suggestion[data-host=localhost] button');
+  await group.click();
+  await until(async () => (await groups())[0]?.tabs === 4);
+
+  await openSite('localhost', 1);
+  await until(async () => (await groups())[0]?.tabs === 5);
+  assert.deepEqual(await groups(), [{ title: 'localhost', tabs: 5 }]);
+  assert.equal(await badge(), '');
+});
+
+test('ignoring a suggestion hides it for good without grouping', async () => {
+  await openSite('localhost', 4);
+  await until(async () => (await badge()) === '1');
+
+  const popup = await extensionPage('popup.html');
+  await popup.waitForSelector('.suggestion[data-host=localhost] button');
+  const [, ignore] = await popup.$$('.suggestion[data-host=localhost] button');
+  await ignore.click();
+  await until(async () => (await badge()) === '');
+
+  await openSite('localhost', 2);
+  await sleep(1000);
+  assert.equal(await badge(), '');
+  assert.deepEqual(await groups(), []);
+  assert.deepEqual((await run(() => chrome.storage.sync.get('ignoredSites'))).ignoredSites, ['localhost']);
+});
+
+test('a grouped site is removed on the settings page', async () => {
+  await settings({ groupSites: ['localhost', 'example.com'] });
+  const page = await extensionPage('options.html');
+  await page.waitForSelector('#groupSites li[data-host=localhost] button');
+  await page.click('#groupSites li[data-host=localhost] button');
+
+  await until(async () => (await run(() => chrome.storage.sync.get('groupSites'))).groupSites.length === 1);
+  assert.deepEqual((await run(() => chrome.storage.sync.get('groupSites'))).groupSites, ['example.com']);
 });
