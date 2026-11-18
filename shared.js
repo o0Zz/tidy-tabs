@@ -33,7 +33,7 @@ export async function saveRules(groupRules) {
   await chrome.storage.sync.remove('groupSites');
 }
 
-// Sites with at least `groupThreshold` ungrouped, unpinned tabs that no rule covers and are not ignored.
+// Sites with at least `groupThreshold` ungrouped, unpinned tabs that no rule or ignored site covers.
 export async function suggestions() {
   const s = await chrome.storage.sync.get(DEFAULTS);
   const rules = await loadRules();
@@ -41,6 +41,6 @@ export async function suggestions() {
   const counts = {};
   for (const host of tabs.map(hostOf)) if (host) counts[host] = (counts[host] ?? 0) + 1;
   return Object.entries(counts)
-    .filter(([host, count]) => count >= s.groupThreshold && !ruleFor(host, rules) && !s.ignoredSites.includes(host))
+    .filter(([host, count]) => count >= s.groupThreshold && !ruleFor(host, rules) && !s.ignoredSites.some((i) => covers(i, host)))
     .map(([host, count]) => ({ host, count }));
 }

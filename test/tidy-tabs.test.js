@@ -310,6 +310,23 @@ test('an ungrouped tab stays out while browsing its site, and a tab leaves the g
   assert.deepEqual(await groups(), [{ title: 'localhost', tabs: 2 }]);
 });
 
+test('sites added to the ignored list on the settings page are never suggested', async () => {
+  const page = await extensionPage('options.html');
+  await page.waitForSelector('#ignoredSites li.empty');
+  await page.type('#ignoreSites', 'localhost');
+  await page.click('#addIgnored button');
+  await page.waitForSelector('#ignoredSites li[data-host=localhost] button');
+  assert.deepEqual((await run(() => chrome.storage.sync.get('ignoredSites'))).ignoredSites, ['localhost']);
+
+  await run((url) => Promise.all([1, 2, 3, 4].map(() => chrome.tabs.create({ url, active: false }))), site('sub.localhost'));
+  await openSite('127.0.0.1', 4);
+  await until(async () => (await badge()) === '1'); // only 127.0.0.1: localhost covers sub.localhost
+
+  await page.click('#ignoredSites li[data-host=localhost] button');
+  await page.waitForSelector('#ignoredSites li.empty');
+  await until(async () => (await badge()) === '2');
+});
+
 const rules = async () => (await run(() => chrome.storage.sync.get(['groupRules', 'groupSites'])));
 
 test('a group added on the settings page takes its sites and their subdomains', async () => {

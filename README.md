@@ -15,7 +15,7 @@ Settings are in the toolbar popup:
   - *Ignore*: the site is never suggested again.
 - **Groups** (settings page): add a group by hand, e.g. *ADO* = `dev.azure.com, visualstudio.com`. A site covers its subdomains (`visualstudio.com` covers `oceasoft.visualstudio.com`). Renaming the group in Chrome renames it in the settings. Tabs you put in another group, or take out of it, stay where you put them.
 
-**Group settings** (settings page): the suggestion threshold, the groups and the ignored sites, each with a *Remove* button.
+**Group settings** (settings page): the suggestion threshold, the groups and the ignored sites (a site covers its subdomains), with *Add* and *Remove* buttons.
 
 ## Install (developer mode)
 

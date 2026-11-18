@@ -38,6 +38,14 @@ $('addRule').addEventListener('submit', async (e) => {
   $('addRule').reset();
 });
 
+$('addIgnored').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const { ignoredSites } = await chrome.storage.sync.get(DEFAULTS);
+  const sites = parseSites($('ignoreSites').value).filter((s) => !ignoredSites.includes(s));
+  if (sites.length) await chrome.storage.sync.set({ ignoredSites: [...ignoredSites, ...sites] });
+  $('addIgnored').reset();
+});
+
 function emptyItem() {
   const li = document.createElement('li');
   li.className = 'empty';
