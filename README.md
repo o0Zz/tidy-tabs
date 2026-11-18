@@ -11,10 +11,11 @@ Settings are in the toolbar popup:
   - *Block new tabs from opening* (default): the new tab is closed and existing tabs are never touched.
 - **Single window** (on/off switch, default on): new browser windows are merged into the main window as tabs. Popups (e.g. Microsoft / Azure login) are left alone, and you can still drag a tab out on purpose.
 - **Group suggestions**: when a site (e.g. `dev.azure.com`) has 4 or more ungrouped tabs, the toolbar icon shows a badge and the popup suggests a group.
-  - *Group*: the site's ungrouped tabs go into a tab group named after it (you can rename it), and tabs that arrive on that site join the group automatically. Tabs you put in another group, or take out of it, stay where you put them.
+  - *Group*: the site's ungrouped tabs go into a tab group named after it, and tabs that arrive on that site join the group automatically.
   - *Ignore*: the site is never suggested again.
+- **Groups** (settings page): add a group by hand, e.g. *ADO* = `dev.azure.com, visualstudio.com`. A site covers its subdomains (`visualstudio.com` covers `oceasoft.visualstudio.com`). Renaming the group in Chrome renames it in the settings. Tabs you put in another group, or take out of it, stay where you put them.
 
-**Group settings** (settings page): the suggestion threshold, and the lists of grouped and ignored sites, each with a *Remove* button.
+**Group settings** (settings page): the suggestion threshold, the groups and the ignored sites, each with a *Remove* button.
 
 ## Install (developer mode)
 

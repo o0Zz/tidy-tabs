@@ -1,4 +1,4 @@
-import { DEFAULTS, suggestions } from './shared.js';
+import { DEFAULTS, loadRules, ruleFor, saveRules, suggestions } from './shared.js';
 
 const $ = (id) => document.getElementById(id);
 const radios = document.querySelectorAll('input[name=whenFull]');
@@ -25,9 +25,16 @@ $('singleWindow').addEventListener('change', (e) => save({ singleWindow: e.targe
 for (const r of radios) r.addEventListener('change', () => save({ whenFull: r.value }));
 $('options').addEventListener('click', () => chrome.runtime.openOptionsPage());
 
-async function addTo(key, host) {
-  const s = await chrome.storage.sync.get(DEFAULTS);
-  if (!s[key].includes(host)) await save({ [key]: [...s[key], host] });
+// Group: a rule named after the site. Ignore: the site is never suggested again.
+async function accept(host) {
+  const rules = await loadRules();
+  if (!ruleFor(host, rules)) await saveRules([...rules, { name: host, sites: [host] }]);
+  await renderSuggestions();
+}
+
+async function ignore(host) {
+  const { ignoredSites } = await chrome.storage.sync.get(DEFAULTS);
+  if (!ignoredSites.includes(host)) await save({ ignoredSites: [...ignoredSites, host] });
   await renderSuggestions();
 }
 
@@ -49,11 +56,11 @@ async function renderSuggestions() {
       row.dataset.host = host;
       const text = document.createElement('span');
       text.textContent = `${count} tabs on ${host}`;
-      const choose = (key) => () => {
+      const choose = (action) => () => {
         row.remove(); // a second click cannot add the site twice
-        addTo(key, host);
+        action(host);
       };
-      row.append(text, button('Group', 'btn primary', choose('groupSites')), button('Ignore', 'btn', choose('ignoredSites')));
+      row.append(text, button('Group', 'btn primary', choose(accept)), button('Ignore', 'btn', choose(ignore)));
       return row;
     }),
   );

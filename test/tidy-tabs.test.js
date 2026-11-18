@@ -294,15 +294,6 @@ test('grouping a site leaves tabs the user grouped alone', async () => {
   ]);
 });
 
-test('a renamed site group still gets the new tabs of its site', async () => {
-  await openSite('localhost', 4);
-  await acceptLocalhost();
-  await run(async () => chrome.tabGroups.update((await chrome.tabGroups.query({}))[0].id, { title: 'Local' }));
-  await openSite('localhost', 1);
-  await until(async () => (await groups())[0]?.tabs === 5);
-  assert.deepEqual(await groups(), [{ title: 'Local', tabs: 5 }]);
-});
-
 test('an ungrouped tab stays out while browsing its site, and a tab leaves the group when it leaves the site', async () => {
   const tabs = await openSite('localhost', 4);
   await acceptLocalhost();
@@ -319,12 +310,52 @@ test('an ungrouped tab stays out while browsing its site, and a tab leaves the g
   assert.deepEqual(await groups(), [{ title: 'localhost', tabs: 2 }]);
 });
 
-test('a grouped site is removed on the settings page', async () => {
-  await settings({ groupSites: ['localhost', 'example.com'] });
-  const page = await extensionPage('options.html');
-  await page.waitForSelector('#groupSites li[data-host=localhost] button');
-  await page.click('#groupSites li[data-host=localhost] button');
+const rules = async () => (await run(() => chrome.storage.sync.get(['groupRules', 'groupSites'])));
 
-  await until(async () => (await run(() => chrome.storage.sync.get('groupSites'))).groupSites.length === 1);
-  assert.deepEqual((await run(() => chrome.storage.sync.get('groupSites'))).groupSites, ['example.com']);
+test('a group added on the settings page takes its sites and their subdomains', async () => {
+  const [stays] = await openSite('localhost', 1);
+  await openSite('127.0.0.1', 1);
+  await run((url) => chrome.tabs.create({ url, active: false }), site('sub.localhost'));
+  await openSite('example.com', 1); // not covered: a site does not cover its parent domain
+
+  const page = await extensionPage('options.html');
+  await page.waitForSelector('#groupRules li.empty');
+  await page.type('#ruleName', 'ADO');
+  await page.type('#ruleSites', `localhost, ${site('127.0.0.1')}some/path`);
+  await page.click('#addRule button');
+  await page.waitForSelector('#groupRules li[data-name=ADO]');
+  assert.deepEqual((await rules()).groupRules, [{ name: 'ADO', sites: ['localhost', '127.0.0.1'] }]);
+  await until(async () => (await groups())[0]?.tabs === 3);
+
+  await openSite('127.0.0.1', 1);
+  await run((id, url) => chrome.tabs.update(id, { url }), stays.id, site('127.0.0.1')); // moves within the group's sites
+  await until(async () => (await groups())[0]?.tabs === 4);
+  await sleep(500);
+  assert.deepEqual(await groups(), [{ title: 'ADO', tabs: 4 }]);
+});
+
+test('renaming a group in Chrome renames it in the settings, also after a restart', async () => {
+  await settings({ groupRules: [{ name: 'ADO', sites: ['localhost'] }] });
+  await openSite('localhost', 1);
+  await until(async () => (await groups())[0]?.title === 'ADO');
+
+  await run(async () => chrome.tabGroups.update((await chrome.tabGroups.query({}))[0].id, { title: 'Azure' }));
+  await until(async () => (await rules()).groupRules[0].name === 'Azure');
+
+  await run(() => chrome.storage.session.remove('siteGroups')); // a restart forgets which group was created for which rule
+  await openSite('localhost', 1);
+  await until(async () => (await groups())[0]?.tabs === 2);
+  assert.deepEqual(await groups(), [{ title: 'Azure', tabs: 2 }]);
+});
+
+test('grouped sites of version 1.0.0 become groups, removed on the settings page', async () => {
+  await settings({ groupSites: ['localhost', 'example.com'] });
+  await openSite('localhost', 1);
+  await until(async () => (await groups())[0]?.title === 'localhost');
+
+  const page = await extensionPage('options.html');
+  await page.waitForSelector('#groupRules li[data-name=localhost] button');
+  await page.click('#groupRules li[data-name=localhost] button');
+  await until(async () => (await rules()).groupSites === undefined);
+  assert.deepEqual(await rules(), { groupRules: [{ name: 'example.com', sites: ['example.com'] }] });
 });

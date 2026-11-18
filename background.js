@@ -1,4 +1,4 @@
-import { DEFAULTS, hostOf, suggestions } from './shared.js';
+import { DEFAULTS, covers, hostOf, loadRules, ruleFor, saveRules, suggestions } from './shared.js';
 
 const NO_GROUP = chrome.tabGroups.TAB_GROUP_ID_NONE;
 
@@ -8,15 +8,17 @@ let queue = Promise.resolve();
 const serial = (fn) => (...args) => (queue = queue.then(() => fn(...args)).catch(console.error));
 
 // Session memory: activation counts per tab ("least accessed" mode), the last two tabs
-// activated in each window, the site each tab is on, and the group created for each site.
-const SESSION = { uses: {}, recent: {}, hosts: {}, siteGroups: {} };
+// activated in each window, the site each tab is on, the rule name of each group created for a rule,
+// and the sites whose tabs were already grouped.
+const SESSION = { uses: {}, recent: {}, hosts: {}, siteGroups: {}, groupedSites: [] };
+const allSites = (rules) => rules.flatMap((r) => r.sites);
 const session = () => chrome.storage.session.get(SESSION);
 
 // Tabs already active when the browser starts get no activation event.
 const start = serial(async () => {
   const recent = {};
   for (const t of await chrome.tabs.query({ active: true })) recent[t.windowId] = [t.id];
-  await chrome.storage.session.set({ recent });
+  await chrome.storage.session.set({ recent, groupedSites: allSites(await loadRules()) });
   await updateBadge();
 });
 chrome.runtime.onStartup.addListener(start);
@@ -77,32 +79,35 @@ chrome.tabs.onCreated.addListener(
   }),
 );
 
-// The site's group in a window: the one created for it (even if renamed), else one titled after it.
-async function siteGroup(host, windowId, siteGroups) {
+// A rule's group in a window: the one created for it, else one titled after it.
+async function ruleGroup(name, windowId, siteGroups) {
   const groups = await chrome.tabGroups.query({ windowId });
-  return groups.find((g) => siteGroups[g.id] === host) ?? groups.find((g) => g.title === host && !(g.id in siteGroups));
+  return groups.find((g) => siteGroups[g.id] === name) ?? groups.find((g) => g.title === name && !(g.id in siteGroups));
 }
 
-async function groupTabs(host, windowId, tabIds) {
+async function groupTabs(name, windowId, tabIds) {
   const { siteGroups } = await session();
-  const group = await siteGroup(host, windowId, siteGroups);
+  const group = await ruleGroup(name, windowId, siteGroups);
   if (group) return chrome.tabs.group({ groupId: group.id, tabIds });
   const groupId = await chrome.tabs.group({ tabIds, createProperties: { windowId } });
-  await chrome.tabGroups.update(groupId, { title: host });
-  siteGroups[groupId] = host;
+  await chrome.tabGroups.update(groupId, { title: name });
+  siteGroups[groupId] = name;
   await chrome.storage.session.set({ siteGroups });
 }
 
-// Puts the ungrouped, unpinned tabs of a site into its group, one group per window.
+// Puts the ungrouped, unpinned tabs on these sites into the rule's group, one group per window.
 // Tabs the user put in another group are left there.
-async function groupSite(host) {
-  const tabs = (await chrome.tabs.query({ windowType: 'normal', pinned: false, groupId: NO_GROUP })).filter((t) => hostOf(t) === host);
+async function groupSites(rule, sites) {
+  const tabs = (await chrome.tabs.query({ windowType: 'normal', pinned: false, groupId: NO_GROUP })).filter((t) => {
+    const host = hostOf(t);
+    return host && sites.some((s) => covers(s, host));
+  });
   for (const windowId of new Set(tabs.map((t) => t.windowId))) {
-    await groupTabs(host, windowId, tabs.filter((t) => t.windowId === windowId).map((t) => t.id));
+    await groupTabs(rule.name, windowId, tabs.filter((t) => t.windowId === windowId).map((t) => t.id));
   }
 }
 
-// Only a change of site moves a tab: browsing within a site leaves it where the user put it.
+// Only a change of rule moves a tab: browsing within its sites leaves it where the user put it.
 async function siteChanged(tab) {
   const host = hostOf(tab);
   const { hosts, siteGroups } = await session();
@@ -111,14 +116,45 @@ async function siteChanged(tab) {
   hosts[tab.id] = host;
   await chrome.storage.session.set({ hosts });
 
+  const rules = await loadRules();
+  const was = ruleFor(before, rules);
+  const now = ruleFor(host, rules);
+  if (was === now) return;
   let { groupId } = tab;
-  if (before && groupId !== NO_GROUP && (await siteGroup(before, tab.windowId, siteGroups))?.id === groupId) {
-    await chrome.tabs.ungroup(tab.id); // it left its site's group
+  if (was && groupId !== NO_GROUP && (await ruleGroup(was.name, tab.windowId, siteGroups))?.id === groupId) {
+    await chrome.tabs.ungroup(tab.id); // it left its rule's group
     groupId = NO_GROUP;
   }
-  const { groupSites } = await chrome.storage.sync.get(DEFAULTS);
-  if (host && groupSites.includes(host) && groupId === NO_GROUP && !tab.pinned) await groupTabs(host, tab.windowId, [tab.id]);
+  if (now && groupId === NO_GROUP && !tab.pinned) await groupTabs(now.name, tab.windowId, [tab.id]);
 }
+
+// Renaming a rule's group in Chrome renames the rule, and its groups in the other windows.
+chrome.tabGroups.onUpdated.addListener(
+  serial(async (group) => {
+    const { siteGroups } = await session();
+    const old = siteGroups[group.id];
+    if (!old || !group.title || group.title === old) return;
+    const rules = await loadRules();
+    const rule = rules.find((r) => r.name === old);
+    if (!rule || rules.some((r) => r.name === group.title)) return;
+    rule.name = group.title;
+    for (const [id, name] of Object.entries(siteGroups)) {
+      if (name !== old) continue;
+      siteGroups[id] = group.title;
+      if (Number(id) !== group.id) await chrome.tabGroups.update(Number(id), { title: group.title });
+    }
+    await chrome.storage.session.set({ siteGroups });
+    await saveRules(rules);
+  }),
+);
+
+chrome.tabGroups.onRemoved.addListener(
+  serial(async (group) => {
+    const { siteGroups } = await session();
+    delete siteGroups[group.id];
+    await chrome.storage.session.set({ siteGroups });
+  }),
+);
 
 async function updateBadge() {
   const n = (await suggestions()).length;
@@ -147,9 +183,15 @@ chrome.tabs.onRemoved.addListener(
 chrome.storage.onChanged.addListener(
   serial(async (changes, area) => {
     if (area !== 'sync') return;
-    if (changes.groupSites) {
-      const before = changes.groupSites.oldValue ?? [];
-      for (const host of changes.groupSites.newValue ?? []) if (!before.includes(host)) await groupSite(host);
+    if (changes.groupRules || changes.groupSites) {
+      // Group the tabs of sites just added to a rule (a renamed rule has no new sites).
+      const rules = await loadRules();
+      const { groupedSites } = await session();
+      for (const rule of rules) {
+        const added = rule.sites.filter((s) => !groupedSites.includes(s));
+        if (added.length) await groupSites(rule, added);
+      }
+      await chrome.storage.session.set({ groupedSites: allSites(rules) });
     }
     await updateBadge();
   }),

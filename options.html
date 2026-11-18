@@ -11,6 +11,11 @@
     h1 { font-size: 22px; margin-bottom: 20px; }
     h1 img { width: 32px; height: 32px; }
     .card { padding: 16px; margin-bottom: 14px; }
+    #addRule { display: flex; gap: 6px; margin-top: 10px; }
+    #ruleName { width: 130px; }
+    #ruleSites { flex: 1; min-width: 0; }
+    #groupRules li > span { font-weight: 600; }
+    .sites { color: var(--muted); margin-left: 6px; font-weight: normal; }
   </style>
 </head>
 <body>
@@ -27,9 +32,14 @@
     </section>
 
     <section class="card">
-      <h2>Grouped sites</h2>
-      <p>New tabs on these sites join their group automatically.</p>
-      <ul class="list" id="groupSites"></ul>
+      <h2>Groups</h2>
+      <p>Tabs on these sites, and their subdomains, join the group automatically. Renaming the group in Chrome renames it here.</p>
+      <ul class="list" id="groupRules"></ul>
+      <form id="addRule">
+        <input type="text" id="ruleName" placeholder="Name, e.g. ADO" required>
+        <input type="text" id="ruleSites" placeholder="Sites, e.g. dev.azure.com, visualstudio.com" required>
+        <button class="btn primary">Add</button>
+      </form>
     </section>
 
     <section class="card">
