@@ -17,6 +17,12 @@ export function hostOf(tab) {
   }
 }
 
+// The keyboard shortcut that opens the popup, e.g. "Ctrl+Shift+F", or '' when none is set.
+export async function shortcut() {
+  const commands = await chrome.commands.getAll();
+  return commands.find((c) => c.name === '_execute_action')?.shortcut ?? '';
+}
+
 // A site covers itself and its subdomains.
 export const covers = (site, host) => host === site || host.endsWith(`.${site}`);
 export const ruleFor = (host, rules) => (host ? rules.find((r) => r.sites.some((s) => covers(s, host))) : undefined);

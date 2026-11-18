@@ -1,4 +1,4 @@
-import { DEFAULTS, loadRules, ruleFor, saveRules, suggestions } from './shared.js';
+import { DEFAULTS, loadRules, ruleFor, saveRules, shortcut, suggestions } from './shared.js';
 
 const $ = (id) => document.getElementById(id);
 const radios = document.querySelectorAll('input[name=whenFull]');
@@ -17,7 +17,7 @@ chrome.storage.sync.get(DEFAULTS).then((s) => {
   showState(s);
 });
 
-chrome.storage.onChanged.addListener(async () => showState(await chrome.storage.sync.get(DEFAULTS)));
+chrome.storage.onChanged.addListener(async (changes, area) => area === 'sync' && showState(await chrome.storage.sync.get(DEFAULTS)));
 
 $('tabLimit').addEventListener('change', (e) => save({ tabLimit: e.target.checked }));
 $('maxTabs').addEventListener('change', (e) => save({ maxTabs: Number(e.target.value) }));
@@ -147,3 +147,4 @@ search.addEventListener('keydown', (e) => {
   }
 });
 search.focus();
+shortcut().then((keys) => keys && (search.placeholder = `Search tabs (${keys})`));

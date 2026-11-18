@@ -15,12 +15,22 @@
     .add input { flex: 1; min-width: 0; }
     #ruleName { flex: none; width: 130px; }
     #groupRules li > span { font-weight: 600; }
+    kbd { font: 600 13px ui-monospace, monospace; background: var(--accent-soft); border-radius: 6px; padding: 3px 8px; }
     .sites { color: var(--muted); margin-left: 6px; font-weight: normal; }
   </style>
 </head>
 <body>
   <main>
     <h1><img src="icons/icon48.png" alt="">Tidy Tabs settings</h1>
+
+    <section class="card">
+      <h2>Keyboard shortcut</h2>
+      <p>Opens the Tidy Tabs popup, ready to search your tabs. Chrome sets extension shortcuts on its own page.</p>
+      <div class="row" style="margin-top: 10px">
+        <kbd id="shortcut"></kbd>
+        <button class="btn" id="changeShortcut">Change…</button>
+      </div>
+    </section>
 
     <section class="card">
       <h2>Group suggestions</h2>

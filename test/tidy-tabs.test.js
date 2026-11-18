@@ -416,3 +416,16 @@ test('the popup searches tabs by title, address and group, and switches to the c
   await popup.keyboard.press('Enter');
   await until(() => run(async (id) => (await chrome.tabs.get(id)).active, second));
 });
+
+test('Ctrl+Shift+F opens the search by default, shown in the popup and on the settings page', async () => {
+  const commands = await run(() => chrome.commands.getAll());
+  assert.equal(commands.find((c) => c.name === '_execute_action')?.shortcut, 'Ctrl+Shift+F');
+
+  const popup = await extensionPage('popup.html');
+  await popup.waitForFunction(() => document.getElementById('search').placeholder === 'Search tabs (Ctrl+Shift+F)');
+
+  const page = await extensionPage('options.html');
+  await page.waitForFunction(() => document.getElementById('shortcut').textContent === 'Ctrl+Shift+F');
+  await page.click('#changeShortcut');
+  await until(() => run(async () => (await chrome.tabs.query({})).some((t) => (t.pendingUrl || t.url) === 'chrome://extensions/shortcuts')));
+});

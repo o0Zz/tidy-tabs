@@ -6,7 +6,7 @@ A small Chrome extension (Manifest V3) that keeps tabs under control.
 
 Settings are in the toolbar popup:
 
-- **Tab search**: the popup opens with the cursor in a search box. Type to list the tabs whose title, address or group name contain every word you typed; the list narrows as you type. Click a result, or pick it with the arrow keys and press Enter, to switch to that tab (and its window). Escape clears the search.
+- **Tab search** (`Ctrl+Shift+F`, or click the toolbar icon): the popup opens with the cursor in a search box. Type to list the tabs whose title, address or group name contain every word you typed; the list narrows as you type. Click a result, or pick it with the arrow keys and press Enter, to switch to that tab (and its window). Escape clears the search.
 - **Tab limit** (on/off switch, default on, 20 tabs) and what happens when it is reached:
   - *Close least recently used*, *Close least accessed* or *Close oldest*: an existing tab is closed to make room. The active tab, the tab you just left for the new one, pinned tabs and tabs playing sound are never closed. **Chrome does not warn about unsaved input**: pin a tab that holds a draft.
   - *Block new tabs from opening* (default): the new tab is closed and existing tabs are never touched.
@@ -16,7 +16,7 @@ Settings are in the toolbar popup:
   - *Ignore*: the site is never suggested again.
 - **Groups** (settings page): add a group by hand, e.g. *ADO* = `dev.azure.com, visualstudio.com`. A site covers its subdomains (`visualstudio.com` covers `oceasoft.visualstudio.com`). Renaming the group in Chrome renames it in the settings. Tabs you put in another group, or take out of it, stay where you put them.
 
-**Group settings** (settings page): the suggestion threshold, the groups and the ignored sites (a site covers its subdomains), with *Add* and *Remove* buttons.
+**Settings page**: the keyboard shortcut (shown there, changed on Chrome's `chrome://extensions/shortcuts` page through the *Change…* button), the suggestion threshold, the groups and the ignored sites (a site covers its subdomains), with *Add* and *Remove* buttons.
 
 ## Install (developer mode)
 

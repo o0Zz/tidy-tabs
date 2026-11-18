@@ -1,6 +1,12 @@
-import { DEFAULTS, loadRules, saveRules } from './shared.js';
+import { DEFAULTS, loadRules, saveRules, shortcut } from './shared.js';
 
 const $ = (id) => document.getElementById(id);
+
+// Read again when the user comes back from Chrome's shortcut page.
+const showShortcut = async () => ($('shortcut').textContent = (await shortcut()) || 'Not set');
+$('changeShortcut').addEventListener('click', () => chrome.tabs.create({ url: 'chrome://extensions/shortcuts' }));
+document.addEventListener('visibilitychange', showShortcut);
+showShortcut();
 
 $('groupThreshold').addEventListener('change', () => {
   const n = Number($('groupThreshold').value);
@@ -91,5 +97,6 @@ async function render() {
   $('ignoredSites').replaceChildren(...(ignoredItems.length ? ignoredItems : [emptyItem()]));
 }
 
-chrome.storage.onChanged.addListener(render);
+// Settings live in sync; the service worker's session writes (tab activity) must not redraw the lists under the cursor.
+chrome.storage.onChanged.addListener((changes, area) => area === 'sync' && render());
 render();
