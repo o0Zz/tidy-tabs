@@ -16,12 +16,14 @@
     #ruleName { flex: none; width: 130px; }
     #groupRules li > span { font-weight: 600; }
     kbd { font: 600 13px ui-monospace, monospace; background: var(--accent-soft); border-radius: 6px; padding: 3px 8px; }
+    .author { text-align: center; color: var(--muted); margin-top: 20px; }
+    .author a { color: var(--accent); }
     .sites { color: var(--muted); margin-left: 6px; font-weight: normal; }
   </style>
 </head>
 <body>
   <main>
-    <h1><img src="icons/icon48.png" alt="">Tidy Tabs settings</h1>
+    <h1><img src="icons/icon48.png" alt="">Tidy Tabs settings <span class="version" id="version"></span></h1>
 
     <section class="card">
       <h2>Keyboard shortcut</h2>
@@ -61,6 +63,7 @@
         <button class="btn primary">Add</button>
       </form>
     </section>
+    <footer class="author">By <a href="https://github.com/o0Zz/tidy-tabs" target="_blank" id="author">o0Zz</a></footer>
   </main>
 
   <script type="module" src="options.js"></script>

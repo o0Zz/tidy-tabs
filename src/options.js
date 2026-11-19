@@ -2,6 +2,8 @@ import { DEFAULTS, loadRules, saveRules, shortcut } from './shared.js';
 
 const $ = (id) => document.getElementById(id);
 
+$('version').textContent = `v${chrome.runtime.getManifest().version}`;
+
 // Read again when the user comes back from Chrome's shortcut page.
 const showShortcut = async () => ($('shortcut').textContent = (await shortcut()) || 'Not set');
 $('changeShortcut').addEventListener('click', () => chrome.tabs.create({ url: 'chrome://extensions/shortcuts' }));

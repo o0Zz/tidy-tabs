@@ -4,6 +4,8 @@ const $ = (id) => document.getElementById(id);
 const radios = document.querySelectorAll('input[name=whenFull]');
 const save = (values) => chrome.storage.sync.set(values);
 
+$('version').textContent = `v${chrome.runtime.getManifest().version}`;
+
 function showState(s) {
   $('tabLimitSettings').disabled = !s.tabLimit;
   $('closeWarning').hidden = s.whenFull === 'block';

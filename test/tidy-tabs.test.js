@@ -328,6 +328,15 @@ test('sites added to the ignored list on the settings page are never suggested',
   await until(async () => (await badge()) === '2');
 });
 
+test('the popup and the settings page show the version, and the settings page the author', async () => {
+  const version = `v${await run(() => chrome.runtime.getManifest().version)}`;
+  const popup = await extensionPage('popup.html');
+  await popup.waitForFunction((v) => document.getElementById('version').textContent === v, {}, version);
+  const options = await extensionPage('options.html');
+  await options.waitForFunction((v) => document.getElementById('version').textContent === v, {}, version);
+  assert.deepEqual(await options.$eval('#author', (a) => [a.textContent, a.href]), ['o0Zz', 'https://github.com/o0Zz/tidy-tabs']);
+});
+
 const rules = async () => (await run(() => chrome.storage.sync.get(['groupRules', 'groupSites'])));
 
 test('a group added on the settings page takes its sites and their subdomains', async () => {
