@@ -27,6 +27,23 @@ $('singleWindow').addEventListener('change', (e) => save({ singleWindow: e.targe
 for (const r of radios) r.addEventListener('change', () => save({ whenFull: r.value }));
 $('options').addEventListener('click', () => chrome.runtime.openOptionsPage());
 
+// "Merge N other windows into this one", shown when other normal windows are open.
+async function showMerge() {
+  const current = await chrome.windows.getCurrent();
+  const others = (await chrome.windows.getAll({ windowTypes: ['normal'] })).filter((w) => w.id !== current.id && w.incognito === current.incognito);
+  $('merge').hidden = others.length === 0;
+  $('merge').textContent = `Merge ${others.length} other window${others.length > 1 ? 's' : ''} into this one`;
+}
+
+$('merge').addEventListener('click', async () => {
+  $('merge').disabled = true;
+  await chrome.runtime.sendMessage({ mergeInto: (await chrome.windows.getCurrent()).id });
+  $('merge').disabled = false;
+  await showMerge();
+});
+
+showMerge();
+
 // Group: a rule named after the site. Ignore: the site is never suggested again.
 async function accept(host) {
   const rules = await loadRules();

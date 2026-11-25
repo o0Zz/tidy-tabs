@@ -210,6 +210,37 @@ const groups = () =>
     return gs.map((g) => ({ title: g.title, tabs: tabs.filter((t) => t.groupId === g.id).length }));
   });
 
+test('the merge button moves every other window into this one, keeping groups and pins', async () => {
+  await settings({ singleWindow: false });
+  const popup = await extensionPage('popup.html');
+  const here = await popup.evaluate(async () => (await chrome.windows.getCurrent()).id);
+
+  // A window with a group of 2 tabs, one with a pinned tab, and a sign-in popup.
+  await run(async (url) => {
+    const a = await chrome.windows.create({ url: [url, url] });
+    const g = await chrome.tabs.group({ tabIds: a.tabs.map((t) => t.id), createProperties: { windowId: a.id } });
+    await chrome.tabGroups.update(g, { title: 'G' });
+    const b = await chrome.windows.create({ url });
+    await chrome.tabs.update(b.tabs[0].id, { pinned: true });
+    await chrome.windows.create({ url, type: 'popup' });
+  }, site('localhost'));
+  const before = (await windows()).filter((w) => w.type === 'normal').flatMap((w) => w.tabs).length;
+
+  await popup.reload();
+  // Polled on a timer: the page is now a background tab, where animation frames do not run.
+  await popup.waitForFunction(() => document.getElementById('merge').textContent === 'Merge 2 other windows into this one', { polling: 100 });
+  await popup.click('#merge');
+  await popup.waitForFunction(() => document.getElementById('merge').hidden, { polling: 100 });
+
+  const ws = await windows();
+  assert.deepEqual(ws.map((w) => w.type).sort(), ['normal', 'popup']);
+  const main = ws.find((w) => w.type === 'normal');
+  assert.equal(main.id, here);
+  assert.equal(main.tabs.length, before);
+  assert.deepEqual(await groups(), [{ title: 'G', tabs: 2 }]);
+  assert.equal((await run(() => chrome.tabs.query({ pinned: true }))).length, 1);
+});
+
 test('a group is suggested once a site reaches 4 tabs', async () => {
   await openSite('127.0.0.1', 3);
   await sleep(1000);

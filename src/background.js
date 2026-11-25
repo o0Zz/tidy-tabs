@@ -156,6 +156,29 @@ chrome.tabGroups.onRemoved.addListener(
   }),
 );
 
+// Moves every tab of the other normal windows (same profile mode) into this one, keeping groups and pins.
+// Popups, apps and devtools windows are left alone.
+async function mergeWindows(windowId) {
+  const target = await chrome.windows.get(windowId);
+  const windows = await chrome.windows.getAll({ windowTypes: ['normal'] });
+  for (const w of windows.filter((w) => w.id !== windowId && w.incognito === target.incognito)) {
+    for (const g of await chrome.tabGroups.query({ windowId: w.id })) await chrome.tabGroups.move(g.id, { windowId, index: -1 });
+    const tabs = await chrome.tabs.query({ windowId: w.id });
+    const pinned = tabs.filter((t) => t.pinned).map((t) => t.id);
+    const rest = tabs.filter((t) => !t.pinned).map((t) => t.id);
+    if (pinned.length) await chrome.tabs.move(pinned, { windowId, index: 0 });
+    for (const id of pinned) await chrome.tabs.update(id, { pinned: true }); // a move unpins them
+    if (rest.length) await chrome.tabs.move(rest, { windowId, index: -1 });
+  }
+}
+
+// The popup's "Merge windows" button. Done here so it finishes even if the popup closes.
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.mergeInto === undefined) return false;
+  serial(mergeWindows)(message.mergeInto).then(() => sendResponse());
+  return true; // answers asynchronously
+});
+
 async function updateBadge() {
   const n = (await suggestions()).length;
   await chrome.action.setBadgeText({ text: n ? String(n) : '' });
