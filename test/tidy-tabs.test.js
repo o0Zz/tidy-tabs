@@ -271,6 +271,46 @@ test('the merge button moves every other window into this one, keeping groups an
   assert.equal((await run(() => chrome.tabs.query({ pinned: true }))).length, 1);
 });
 
+test('merging keeps the tab order and gives a rule a single group', async () => {
+  await settings({ singleWindow: false, groupRules: [{ name: 'Local', sites: ['localhost'] }] });
+  const popup = await extensionPage('popup.html');
+  const here = await popup.evaluate(async () => (await chrome.windows.getCurrent()).id);
+  const page = (name) => `${site('127.0.0.1')}${name}`;
+
+  // This window has a Local group. The other window: x, Local group (l), user group G (y, z), w.
+  await run((url, windowId) => chrome.tabs.create({ url, windowId, active: false }), site('localhost'), here);
+  const order = await run(
+    async (local, [x, y, z, w]) => {
+      const win = await chrome.windows.create({ url: x });
+      const create = (url) => chrome.tabs.create({ url, windowId: win.id });
+      const l = await create(local);
+      const ys = await create(y);
+      const zs = await create(z);
+      const ws = await create(w);
+      const g = await chrome.tabs.group({ tabIds: [ys.id, zs.id] });
+      await chrome.tabGroups.update(g, { title: 'G' });
+      return [win.tabs[0].id, l.id, ys.id, zs.id, ws.id];
+    },
+    site('localhost'),
+    ['x', 'y', 'z', 'w'].map(page),
+  );
+  await until(async () => (await groups()).filter((g) => g.title === 'Local').length === 2);
+
+  await popup.reload();
+  await popup.waitForFunction(() => document.getElementById('merge').textContent === 'Merge 1 other window into this one', { polling: 100 });
+  await popup.click('#merge');
+  await popup.waitForFunction(() => document.getElementById('merge').hidden, { polling: 100 });
+
+  const main = (await windows()).find((w) => w.id === here);
+  const [x, l, y, z, w] = order;
+  assert.deepEqual(main.tabs.filter((id) => [x, y, z, w].includes(id)), [x, y, z, w]);
+  assert.deepEqual((await groups()).sort((a, b) => a.title.localeCompare(b.title)), [
+    { title: 'G', tabs: 2 },
+    { title: 'Local', tabs: 2 },
+  ]);
+  assert.equal(await run((l) => chrome.tabs.get(l).then((t) => t.windowId), l), here);
+});
+
 test('a group is suggested once a site reaches 4 tabs', async () => {
   await openSite('127.0.0.1', 3);
   await sleep(1000);

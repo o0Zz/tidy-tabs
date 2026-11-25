@@ -165,19 +165,33 @@ chrome.tabGroups.onRemoved.addListener(
   }),
 );
 
-// Moves every tab of the other normal windows (same profile mode) into this one, keeping groups and pins.
+// Moves every tab of the other normal windows (same profile mode) into this one, in order, keeping groups and pins.
+// A rule's group joins the rule's group already in this window, so the rule keeps a single group.
 // Popups, apps and devtools windows are left alone.
 async function mergeWindows(windowId) {
   const target = await chrome.windows.get(windowId);
-  const windows = await chrome.windows.getAll({ windowTypes: ['normal'] });
+  const windows = await chrome.windows.getAll({ windowTypes: ['normal'], populate: true });
+  const { siteGroups } = await session();
   for (const w of windows.filter((w) => w.id !== windowId && w.incognito === target.incognito)) {
-    for (const g of await chrome.tabGroups.query({ windowId: w.id })) await chrome.tabGroups.move(g.id, { windowId, index: -1 });
-    const tabs = await chrome.tabs.query({ windowId: w.id });
-    const pinned = tabs.filter((t) => t.pinned).map((t) => t.id);
-    const rest = tabs.filter((t) => !t.pinned).map((t) => t.id);
-    if (pinned.length) await chrome.tabs.move(pinned, { windowId, index: 0 });
-    for (const id of pinned) await chrome.tabs.update(id, { pinned: true }); // a move unpins them
-    if (rest.length) await chrome.tabs.move(rest, { windowId, index: -1 });
+    const moved = new Set();
+    for (const tab of w.tabs) {
+      if (tab.groupId === NO_GROUP) {
+        await chrome.tabs.move(tab.id, { windowId, index: -1 });
+        if (tab.pinned) await chrome.tabs.update(tab.id, { pinned: true }); // a move unpins it
+        continue;
+      }
+      if (moved.has(tab.groupId)) continue;
+      moved.add(tab.groupId);
+      const name = siteGroups[tab.groupId];
+      const existing = name && (await ruleGroup(name, windowId, siteGroups));
+      if (!existing) {
+        await chrome.tabGroups.move(tab.groupId, { windowId, index: -1 });
+        continue;
+      }
+      const tabIds = w.tabs.filter((t) => t.groupId === tab.groupId).map((t) => t.id);
+      await chrome.tabs.move(tabIds, { windowId, index: -1 });
+      await chrome.tabs.group({ groupId: existing.id, tabIds });
+    }
   }
 }
 
