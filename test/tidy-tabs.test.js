@@ -105,6 +105,36 @@ test('block: new tabs above the limit are blocked and existing tabs are kept', a
   assert.deepEqual(await tabIds(), existing);
 });
 
+// Records the notifications the extension shows; Chrome still shows them.
+const recordNotifications = () =>
+  run(() => {
+    globalThis.shown = [];
+    const create = chrome.notifications.create.bind(chrome.notifications);
+    chrome.notifications.create = (id, options) => (shown.push([id, options.title, options.message]), create(id, options));
+  });
+
+test('a notification tells when the limit blocks or closes a tab, and not below the limit', async () => {
+  await settings({ maxTabs: 3 });
+  await recordNotifications();
+  await newTab();
+  await newTab();
+  await sleep(500);
+  assert.deepEqual(await run(() => shown), []);
+
+  await newTab();
+  await until(() => run(() => shown.length === 1));
+  assert.deepEqual(await run(() => shown), [['tab-limit', 'Tab limit reached (3 tabs)', 'The new tab was blocked. Close a tab or raise the limit in Tidy Tabs.']]);
+  assert.ok('tab-limit' in (await run(() => chrome.notifications.getAll())));
+
+  await settings({ whenFull: 'oldest' });
+  const victim = (await tabIds())[1];
+  await run((id, url) => chrome.tabs.update(id, { url }), victim, `${site('localhost')}draft`);
+  await until(() => run(async (id) => (await chrome.tabs.get(id)).title === 'page /draft', victim));
+  await newTab();
+  await until(() => run(() => shown.length === 2));
+  assert.deepEqual((await run(() => shown))[1], ['tab-limit', 'Tab limit reached (3 tabs)', 'Closed "page /draft" to make room. Ctrl+Shift+T reopens it.']);
+});
+
 test('with the tab limit off, tabs above the limit stay open', async () => {
   await settings({ tabLimit: false, maxTabs: 10 });
   for (let i = 0; i < 14; i++) await newTab();

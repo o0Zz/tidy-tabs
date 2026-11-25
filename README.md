@@ -35,7 +35,7 @@ Set a maximum (20 by default) and choose what happens when you reach it:
 - **Block new tabs** (default): nothing you already have open is ever touched.
 - **Close the least recently used**, **least accessed** or **oldest** tab to make room.
 
-The close modes never touch the tab you are looking at, the tab you just left, pinned tabs or tabs playing sound. *Tip: pin the tabs where you write long text, Chrome does not warn about unsaved input.*
+Either way, a notification tells you what happened, including the title of any tab that was closed (Ctrl+Shift+T reopens it). The close modes never touch the tab you are looking at, the tab you just left, pinned tabs or tabs playing sound. *Tip: pin the tabs where you write long text, Chrome does not warn about unsaved input.*
 
 ### 🪟 One window, always
 New windows open as tabs in your main window, so nothing gets lost behind another window. Already have a pile of windows? One click on **Merge windows** brings them all into the current one, with their tab groups and pinned tabs intact. Sign-in popups (Microsoft, Google, …) are left alone, so logins keep working.

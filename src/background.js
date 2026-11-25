@@ -33,6 +33,10 @@ chrome.tabs.onActivated.addListener(
   }),
 );
 
+// One notification, replaced by the next: a burst of blocked tabs shows a single message.
+const notify = (title, message) =>
+  chrome.notifications.create('tab-limit', { type: 'basic', iconUrl: 'icons/icon128.png', title, message });
+
 function tabToClose(mode, candidates, uses) {
   if (mode === 'block' || candidates.length === 0) return null;
   const score = {
@@ -62,8 +66,13 @@ chrome.tabs.onCreated.addListener(
       // Never close the tab being looked at or just left, a pinned tab or one playing sound.
       const candidates = tabs.filter((t) => !keep.has(t.id) && !t.active && !t.pinned && !t.audible);
       const victim = tabToClose(settings.whenFull, candidates, uses);
-      if (!victim) return chrome.tabs.remove(me.id);
+      const title = `Tab limit reached (${settings.maxTabs} tabs)`;
+      if (!victim) {
+        await chrome.tabs.remove(me.id);
+        return notify(title, 'The new tab was blocked. Close a tab or raise the limit in Tidy Tabs.');
+      }
       await chrome.tabs.remove(victim.id);
+      await notify(title, `Closed "${victim.title || victim.url}" to make room. Ctrl+Shift+T reopens it.`);
     }
 
     if (!settings.singleWindow) return;
