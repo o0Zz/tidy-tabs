@@ -440,6 +440,28 @@ test('the popup and the settings page show the version, and the settings page th
 
 const rules = async () => (await run(() => chrome.storage.sync.get(['groupRules', 'groupSites'])));
 
+test('a rule never makes a second group with the same name, and joins duplicates into one', async () => {
+  await settings({ groupRules: [{ name: 'Local', sites: ['localhost'] }] });
+  await openSite('localhost', 1);
+  await until(async () => (await groups()).length === 1);
+
+  // A link opened in a new window lands in the main window's group.
+  await run((url) => chrome.windows.create({ url }), site('localhost'));
+  await until(async () => (await windows()).length === 1 && (await groups())[0]?.tabs === 2);
+  await sleep(500);
+  assert.deepEqual(await groups(), [{ title: 'Local', tabs: 2 }]);
+
+  // Duplicates left from before (e.g. a restored session) join the first group on the next tab.
+  await run(async () => {
+    const tab = await chrome.tabs.create({ url: 'about:blank', active: false });
+    await chrome.tabGroups.update(await chrome.tabs.group({ tabIds: tab.id }), { title: 'Local' });
+  });
+  assert.equal((await groups()).length, 2);
+  await openSite('localhost', 1);
+  await until(async () => (await groups()).length === 1);
+  assert.deepEqual(await groups(), [{ title: 'Local', tabs: 4 }]);
+});
+
 test('a group added on the settings page takes its sites and their subdomains', async () => {
   const [stays] = await openSite('localhost', 1);
   await openSite('127.0.0.1', 1);

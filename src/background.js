@@ -83,21 +83,31 @@ chrome.tabs.onCreated.addListener(
     if (main.id === win.id) return;
 
     await chrome.tabs.move(me.id, { windowId: main.id, index: -1 });
+    // A move to another window ungroups the tab: it joins its rule's group in the main window.
+    const rule = ruleFor(hostOf(me), await loadRules());
+    if (rule && !me.pinned) await groupTabs(rule.name, main.id, [me.id]);
     await chrome.tabs.update(me.id, { active: true });
     await chrome.windows.update(main.id, { focused: true });
   }),
 );
 
-// A rule's group in a window: the one created for it, else one titled after it.
-async function ruleGroup(name, windowId, siteGroups) {
+// A rule's groups in a window: those created for it, then those titled after it (e.g. restored with the session).
+async function ruleGroups(name, windowId, siteGroups) {
   const groups = await chrome.tabGroups.query({ windowId });
-  return groups.find((g) => siteGroups[g.id] === name) ?? groups.find((g) => g.title === name && !(g.id in siteGroups));
+  return [...groups.filter((g) => siteGroups[g.id] === name), ...groups.filter((g) => g.title === name && !(g.id in siteGroups))];
 }
+const ruleGroup = async (name, windowId, siteGroups) => (await ruleGroups(name, windowId, siteGroups))[0];
 
+// Adds the tabs to the rule's group, created only if the window has none.
+// Other groups of the rule in the window join it too, so a rule keeps a single group.
 async function groupTabs(name, windowId, tabIds) {
   const { siteGroups } = await session();
-  const group = await ruleGroup(name, windowId, siteGroups);
-  if (group) return chrome.tabs.group({ groupId: group.id, tabIds });
+  const [group, ...duplicates] = await ruleGroups(name, windowId, siteGroups);
+  if (group) {
+    const ids = new Set(duplicates.map((g) => g.id));
+    const extra = ids.size ? (await chrome.tabs.query({ windowId })).filter((t) => ids.has(t.groupId)).map((t) => t.id) : [];
+    return chrome.tabs.group({ groupId: group.id, tabIds: [...tabIds, ...extra] });
+  }
   const groupId = await chrome.tabs.group({ tabIds, createProperties: { windowId } });
   await chrome.tabGroups.update(groupId, { title: name });
   siteGroups[groupId] = name;
@@ -130,7 +140,7 @@ async function siteChanged(tab) {
   const now = ruleFor(host, rules);
   if (was === now) return;
   let { groupId } = tab;
-  if (was && groupId !== NO_GROUP && (await ruleGroup(was.name, tab.windowId, siteGroups))?.id === groupId) {
+  if (was && groupId !== NO_GROUP && (await ruleGroups(was.name, tab.windowId, siteGroups)).some((g) => g.id === groupId)) {
     await chrome.tabs.ungroup(tab.id); // it left its rule's group
     groupId = NO_GROUP;
   }
@@ -210,7 +220,9 @@ async function updateBadge() {
 chrome.tabs.onUpdated.addListener(
   serial(async (tabId, change, tab) => {
     if (!change.url && change.groupId === undefined && change.pinned === undefined) return;
-    if (change.url) await siteChanged(tab);
+    // The tab may have moved since the event: a new window's tab goes to the main window.
+    const now = change.url && (await chrome.tabs.get(tabId).catch(() => null)); // null: closed since
+    if (now) await siteChanged(now);
     await updateBadge();
   }),
 );
